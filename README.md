@@ -4,6 +4,8 @@ This repository implements an end-to-end AI recruitment and ranking pipeline des
 
 Instead of simple keyword matching—which falls into common recruitment traps—this engine evaluates candidates across **data integrity (honeypot detection)**, **strict disqualifiers (hard filters)**, **multi-dimensional behavioral merit (scoring matrix)**, and **semantic execution depth (NLP search with phrasing modifiers)**.
 
+> **🌐 Live Sandbox Demo:** Try out the ranking engine interactively on our hosted Streamlit application: [https://candidates-ranking-system.streamlit.app/](https://candidates-ranking-system.streamlit.app/)
+
 ---
 
 ## 1. Honeypot & Trap Detection Methods
@@ -148,4 +150,9 @@ To verify that the generated CSV strictly conforms to the Redrob Hackathon v4 sp
 ```bash
 python validate_submission.py submission.csv
 ```
+
+### 4. Interactive Live Sandbox
+You can also test and verify our ranking pipeline interactively via our hosted Streamlit cloud application:
+[https://candidates-ranking-system.streamlit.app/](https://candidates-ranking-system.streamlit.app/)
+
 
