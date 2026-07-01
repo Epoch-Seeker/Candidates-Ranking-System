@@ -30,7 +30,8 @@ def filter_candidates(df_new):
     unwanted_industries = {"IT Services", "Consulting", "Manufacturing"}
     df_exploded['is_unwanted'] = df_exploded['extracted_industry'].isin(unwanted_industries)
     all_unwanted_mask = df_exploded.groupby(level=0)['is_unwanted'].all()
-    df_filtered = df_new[~all_unwanted_mask].copy()
+    mask = ~all_unwanted_mask.reindex(df_new.index, fill_value=False)
+    df_filtered = df_new.loc[mask].copy()
 
     # Calculate average duration
     df_filtered['avg_duration'] = df_filtered['career_history'].apply(
@@ -316,10 +317,13 @@ if __name__ == "__main__":
 
     print(f"Loaded {len(data)} candidates.")
     df_data = pd.DataFrame(data)
+    print("Columns before filtering:", df_data.columns.tolist())
+    # print(df_data.head(1))
     
     print("2. Applying aggressive Pandas Hard Filters...")
     df_filtered = filter_candidates(df_data)
-    
+    print("Columns after filtering:", df_filtered.columns.tolist())
+
     print("3. Calculating Logistics & Behavioral scores...")
     df_ranked = run_scoring_engine(df_filtered)
     
