@@ -7,6 +7,10 @@ import csv
 import gzip
 import os
 from datetime import datetime
+import sys
+# Prevent torchcodec DLL crash on Windows environments without FFmpeg
+for mod in ['torchcodec', 'torchcodec.decoders']:
+    sys.modules[mod] = None
 from sentence_transformers import SentenceTransformer, util
 
 # ==========================================
@@ -170,6 +174,8 @@ TARGET_SKILLS = [
 ]
 
 def run_scoring_engine(df_input):
+    if len(df_input) == 0:
+        return df_input.copy()
     df = df_input.copy()
     
     # PART 1: LOCATION
@@ -260,13 +266,19 @@ def run_scoring_engine(df_input):
 # 2. NLP & HONEYPOT LOGIC (Our Code)
 # ==========================================
 
-print("Loading Semantic Model...")
-model = SentenceTransformer('all-MiniLM-L6-v2')
+_semantic_model = None
+_ideal_vector = None
 
-IDEAL_JD_QUERY = """
+def get_semantic_model_and_vector():
+    global _semantic_model, _ideal_vector
+    if _semantic_model is None:
+        print("Loading Semantic Model...")
+        _semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+        IDEAL_JD_QUERY = """
 AI Engineer building the intelligence layer for search, candidate-job matching, and recommendation systems. Requires applied ML engineering at a product company, shipping production-grade ranking or retrieval systems to real users. Essential experience includes production embedding-based retrieval, hybrid search, dense retrieval, and LLM-based re-ranking. Must have handled embedding drift, index refresh, and retrieval-quality regression in live environments. Requires strong Python and hands-on operational experience with vector databases and search infrastructure (Pinecone, Weaviate, Qdrant, Milvus, FAISS, OpenSearch, Elasticsearch). Must design and implement rigorous ranking evaluation frameworks using NDCG, MRR, MAP, offline-to-online correlation, and A/B testing. Preferred expertise covers learning-to-rank (XGBoost, neural), LLM fine-tuning (LoRA, QLoRA, PEFT), large-scale inference optimization, and distributed systems. Blends ML architecture with rapid product-engineering and end-to-end deployment.
 """
-IDEAL_VECTOR = model.encode(IDEAL_JD_QUERY, convert_to_tensor=True)
+        _ideal_vector = _semantic_model.encode(IDEAL_JD_QUERY, convert_to_tensor=True)
+    return _semantic_model, _ideal_vector
 
 def extract_candidate_text(candidate):
     profile = candidate.get('profile', {})
@@ -405,6 +417,15 @@ if __name__ == "__main__":
     df_filtered = filter_candidates(df_data)
     num_hard_filtered = len(df_data) - len(df_filtered)
     print(f"Filtered out {num_hard_filtered} candidates before semantic search via hard filters (remaining: {len(df_filtered)}).")
+    
+    if len(df_filtered) == 0:
+        print("No candidates left after honeypot filtration and hard filters! Generating empty submission CSV...")
+        print("5. Generating Submission CSV...")
+        with open(args.out, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(['candidate_id', 'rank', 'score', 'reasoning'])
+        print(f"Pipeline Complete! Output written to {args.out}")
+        sys.exit(0)
 
     print("3. Calculating Logistics & Behavioral scores...")
     df_ranked = run_scoring_engine(df_filtered)
@@ -418,13 +439,11 @@ if __name__ == "__main__":
     total_excluded_before_nlp = len(df_data) - len(candidates_list)
     final_pool = []
     print(f"4. Running NLP Semantic Search on top {len(candidates_list)} candidates ({total_excluded_before_nlp} candidates filtered/excluded before semantic search)...")
+    model, ideal_vec = get_semantic_model_and_vector()
     for idx, candidate in enumerate(candidates_list):
         candidate_text = extract_candidate_text(candidate)
-        if idx < 10:
-            print(f"\n--- Candidate {idx+1} ({candidate['candidate_id']}) Semantic Search Text ---")
-            print(candidate_text)
         candidate_vector = model.encode(candidate_text, convert_to_tensor=True)
-        cosine_score = util.cos_sim(IDEAL_VECTOR, candidate_vector).item()
+        cosine_score = util.cos_sim(ideal_vec, candidate_vector).item()
         semantic_score = max(0.0, cosine_score)
         
         text_lower = candidate_text.lower()
@@ -455,4 +474,4 @@ if __name__ == "__main__":
             reasoning = generate_reasoning(item['candidate_data'], item['final_score'])
             writer.writerow([item['candidate_id'], rank, round(item['final_score'], 4), reasoning])
             
-    print(f"✅ Pipeline Complete! Output written to {args.out}")
+    print(f"Pipeline Complete! Output written to {args.out}")
