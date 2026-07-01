@@ -14,7 +14,7 @@ It runs our `rank.py` algorithm end-to-end on a pre-loaded sample dataset and ou
 """)
 
 # We use the sample file for the sandbox to ensure it runs well under the 5-minute limit
-SAMPLE_FILE = "top_500_candidates.json"
+SAMPLE_FILE = "top_100_candidates.json"
 OUTPUT_FILE = "submission.csv"
 
 st.write(f"**Target Dataset:** `{SAMPLE_FILE}`")
