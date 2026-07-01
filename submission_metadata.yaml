@@ -1,0 +1,70 @@
+# ============================================================================
+# Team identity
+# ============================================================================
+team_name: "CodingON"   
+
+primary_contact:
+  name: "Sunny Kumar"
+  email: "sunnyiitian1432@gmail.com"   
+  phone: "+91-6230853597"       
+
+team_members:
+  - name: "Sunny Kumar"
+    email: "sunnyiitian1432@gmail.com"
+    role: "Team lead"           
+  - name: "Rishit Dutta"
+    email: "rishitdutta03@gmail.com"
+    role: "Data Engineer"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "https://github.com/Epoch-Seeker/Candidates-Ranking-System"
+
+sandbox_link: "https://candidates-ranking-system-vpx6lffo8uxtfndmvavdxs.streamlit.app/"
+
+reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+
+# ============================================================================
+# Compute environment
+# ============================================================================
+compute:
+  platform: "HP Victus"                     
+  cpu_cores: 8                                   
+  ram_gb: 16                                    
+  python_version: "3.10.0"                       
+  os: "Windows 11"                              
+  uses_gpu_for_inference: false                  
+  has_network_during_ranking: false              
+  pre_computation_required: false                
+  pre_computation_time_minutes: 0               
+
+# ============================================================================
+# AI tools declaration
+# ============================================================================
+ai_tools_used:
+  - "Gemini"          # Used for architecture design, pipeline coding, and debugging
+  - "GitHub Copilot"  # Used it in VS Code for autocomplete and debugging
+
+ai_usage_summary: |
+  Briefly describe how AI tools were used. Examples:
+  - "Used Gemini for architectural discussion, reasoning logic generation, and pipeline structure design (Pandas filtering + Semantic Search). Used Copilot in VS Code for autocomplete and small debugging. No candidate data was fed to any LLM."
+  
+# ============================================================================
+# Approach summary (optional but recommended)
+# ============================================================================
+methodology_summary: |
+  Two-stage hybrid ranking architecture optimized for CPU efficiency and trap evasion. 
+  Stage 1 utilizes a Pandas-based hard-filtering engine to immediately eliminate synthetic honeypots, pure-services industries, and non-coding title chasers, while enforcing logistical constraints (location, notice periods). 
+  Stage 2 applies a local NLP model (all-MiniLM-L6-v2) to compute semantic similarity between candidate career histories and a highly specific JD vector, effectively identifying applied ML engineers who built real recommendation systems even if they omitted trendy buzzwords. 
+  The final ranking uses a multiplicative matrix combining the Semantic Fit Score with a Behavioral Merit Score (weighted across recruiter response rates, GitHub activity, and market demand). Finally, an Explainable AI (XAI) module generates dynamic reasoning strings for the top 100 candidates, explicitly citing the specific technical and behavioral signals driving their selection. The pipeline processes 100K candidates in under a minute.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true         
+  code_is_original_work: true      
+  no_collusion: true                 
+  honeypot_check_done: true         
+  reproduction_tested: true          
