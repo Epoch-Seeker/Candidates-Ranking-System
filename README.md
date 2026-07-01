@@ -125,3 +125,27 @@ The following table summarizes the Top 5 candidates emerging from our ranking en
 #### 5. `CAND_0062247` — The Exact "Weeks 1-8 JD Roadmap" Executer (Rank 5)
 * **What they built**: Led a product team through the exact migration from legacy keyword search to embedding-based retrieval (`all-MiniLM-L6-v2` / `bge-base` with FAISS) and learning-to-rank, improving e-commerce revenue by 12%. Notes: *"I've spent enough time debugging production ranking issues to know which signals matter and which are noise."*
 * **JD Alignment**: Redrob's JD literally maps out the candidate's first 90 days: *"Weeks 1-3: Audit what we currently have (mostly BM25 + rule-based scoring)... Weeks 4-8: Ship a v2 ranking system involving embeddings and hybrid retrieval."* Candidate 5 has already executed this exact architectural journey from scratch at a product company!
+
+---
+
+## 7. Setup & Quick Reproduction Instructions
+
+To reproduce the submission CSV in a standard CPU environment (or inside the Stage 3 sandboxed Docker container) within the mandated 5-minute wall-clock and 16 GB memory limits:
+
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Run the Ranking Pipeline
+Execute the following single command from the repository root:
+```bash
+python rank.py --candidates ./candidates.jsonl --out ./submission.csv
+```
+
+### 3. Validate Submission Format
+To verify that the generated CSV strictly conforms to the Redrob Hackathon v4 specification:
+```bash
+python validate_submission.py submission.csv
+```
+
