@@ -29,11 +29,22 @@ We process the surviving high-quality candidates through a local embedding model
 
 ## 📂 Repository Structure
 
-* `rank.py`: The master execution script containing the Pandas filters, NLP model, and CSV generator.
 * `app.py`: The Streamlit sandbox UI for quick visual evaluation.
+* `rank.py`: The master execution script containing the Pandas filters, NLP model, and CSV generator.
 * `requirements.txt`: Python dependencies required to run the pipeline.
-* `submission_metadata.yaml`: Team details and configuration.
 * `sample_candidates.json`: A lightweight sample dataset used for the Streamlit sandbox.
+* `submission_metadata.yaml`: Team details, tool declarations, and automated reproduction configuration.
+* `team_CodingON.csv`: The final generated submission file containing the top-ranked candidates, complete with final fit scores and dynamic Explainable AI (XAI) reasoning strings.
+* `validate_submission.py`: A local validation script used to verify schema compliance, column constraints, and output data types before official portal deployment.
+
+---
+
+## 🧪 Interactive Sandbox
+
+To fulfill the Section 10.5 requirement, we have deployed a live sandbox using Streamlit Cloud. This allows judges to verify the codebase, execute the algorithm against a sample dataset, and view the generated reasoning strings and final CSV output instantly.
+
+**[Access the Live Sandbox Here](https://your-app-name.streamlit.app)**
+
 
 ---
 

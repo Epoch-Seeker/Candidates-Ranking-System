@@ -21,7 +21,7 @@ team_members:
 # ============================================================================
 github_repo: "https://github.com/Epoch-Seeker/Candidates-Ranking-System"
 
-sandbox_link: "https://candidates-ranking-system-vpx6lffo8uxtfndmvavdxs.streamlit.app/"
+sandbox_link: "https://candidates-ranking-system.streamlit.app/"
 
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
