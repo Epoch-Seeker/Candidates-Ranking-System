@@ -43,7 +43,7 @@ We process the surviving high-quality candidates through a local embedding model
 
 To fulfill the Section 10.5 requirement, we have deployed a live sandbox using Streamlit Cloud. This allows judges to verify the codebase, execute the algorithm against a sample dataset, and view the generated reasoning strings and final CSV output instantly.
 
-**[Access the Live Sandbox Here](https://your-app-name.streamlit.app)**
+**[Access the Live Sandbox Here](https://candidates-ranking-system.streamlit.app/)**
 
 
 ---
