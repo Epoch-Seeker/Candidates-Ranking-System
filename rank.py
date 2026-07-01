@@ -5,6 +5,7 @@ import re
 import json
 import csv
 import gzip
+import os
 from sentence_transformers import SentenceTransformer, util
 
 # ==========================================
@@ -269,22 +270,51 @@ def generate_reasoning(candidate, score):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rank AI Engineer Candidates for Redrob Hackathon")
-    parser.add_argument('--candidates', type=str, required=True, help="Path to the candidates.jsonl file")
-    parser.add_argument('--out', type=str, required=True, help="Path to output the final submission CSV")
+    parser.add_argument(
+        "--candidates",
+        type=str,
+        required=True,
+        help="Path to the candidates file (.json, .jsonl, .jsonl.gz)"
+    )
+    parser.add_argument(
+        "--out",
+        type=str,
+        required=True,
+        help="Path to output the final submission CSV"
+    )
     args = parser.parse_args()
 
-    print(f"1. Loading data from {args.candidates} (via safe JSON parser)...")
-    data = []
-    
-    # Automatically handle both .gz and uncompressed .jsonl files safely
-    opener = gzip.open if args.candidates.endswith('.gz') else open
-    mode = 'rt' if args.candidates.endswith('.gz') else 'r'
-    
-    with opener(args.candidates, mode, encoding='utf-8') as f:
-        for line in f:
-            if line.strip():
-                data.append(json.loads(line))
-                
+    file_path = args.candidates
+    ext = os.path.splitext(file_path)[1].lower()
+
+    print(f"1. Loading data from {file_path}...")
+
+    # Handle compressed files
+    if file_path.endswith(".gz"):
+        opener = gzip.open
+        mode = "rt"
+        inner_ext = os.path.splitext(os.path.splitext(file_path)[0])[1].lower()
+    else:
+        opener = open
+        mode = "r"
+        inner_ext = ext
+
+    with opener(file_path, mode, encoding="utf-8") as f:
+        if inner_ext == ".json":
+            # Standard JSON array
+            data = json.load(f)
+
+        elif inner_ext == ".jsonl":
+            # JSON Lines
+            data = [json.loads(line) for line in f if line.strip()]
+
+        else:
+            raise ValueError(
+                f"Unsupported file type: {file_path}. "
+                "Supported formats are .json, .jsonl, and .jsonl.gz"
+            )
+
+    print(f"Loaded {len(data)} candidates.")
     df_data = pd.DataFrame(data)
     
     print("2. Applying aggressive Pandas Hard Filters...")
