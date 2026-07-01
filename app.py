@@ -2,6 +2,7 @@ import streamlit as st
 import subprocess
 import pandas as pd
 import os
+import sys
 
 st.set_page_config(page_title="Redrob Hackathon Sandbox", layout="wide")
 
@@ -22,7 +23,7 @@ if st.button("🚀 Run Ranking Algorithm", type="primary"):
         
         # This executes your exact CLI command in the background
         result = subprocess.run(
-            ["python", "rank.py", "--candidates", SAMPLE_FILE, "--out", OUTPUT_FILE],
+            [sys.executable, "rank.py", "--candidates", SAMPLE_FILE, "--out", OUTPUT_FILE],
             capture_output=True, text=True
         )
         
