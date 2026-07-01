@@ -6,7 +6,67 @@ import json
 import csv
 import gzip
 import os
+from datetime import datetime
 from sentence_transformers import SentenceTransformer, util
+
+# ==========================================
+# HONEYPOT TRAPS LOGIC
+# ==========================================
+
+# 1. Inverted Salary
+def has_inverted_salary(signals):
+    if not isinstance(signals, dict): return False
+    salary = signals.get('expected_salary_range_inr_lpa', {})
+    return (salary.get('min') or 0) > (salary.get('max') or float('inf'))
+
+# 2. Time Travel
+def has_time_travel(signals):
+    if not isinstance(signals, dict): return False
+    signup = signals.get('signup_date')
+    last_active = signals.get('last_active_date')
+    return bool(signup and last_active and last_active < signup)
+
+# 3. Impossible Mastery
+def has_impossible_mastery(skills):
+    if not isinstance(skills, list): return False
+    return any(
+        s.get('proficiency') in ['expert', 'advanced'] and (s.get('duration_months') or 0) == 0 
+        for s in skills if isinstance(s, dict)
+    )
+
+# 4. Experience Math Failure
+def has_experience_math_failure(row):
+    profile = row.get('profile', {})
+    career = row.get('career_history', [])
+    if not isinstance(profile, dict) or not isinstance(career, list): return False
+    
+    stated_yoe = float(profile.get('years_of_experience') or 0)
+    calculated_months = sum(float(job.get('duration_months') or 0) for job in career if isinstance(job, dict))
+    
+    return abs(stated_yoe - (calculated_months / 12)) > 2.0
+
+# 5. Future Certifications
+def has_future_certs(certs):
+    if not isinstance(certs, list): return False
+    current_year = datetime.now().year
+    return any((cert.get('year') or 0) > current_year for cert in certs if isinstance(cert, dict))
+
+def filter_honeypots_df(df):
+    """
+    Dataframe Filtering for Honeypot Traps
+    """
+    certs_col = df['certifications'] if 'certifications' in df.columns else pd.Series([None] * len(df), index=df.index)
+    mask_any_trap = (
+        df['redrob_signals'].apply(has_inverted_salary) |
+        df['redrob_signals'].apply(has_time_travel) |
+        df['skills'].apply(has_impossible_mastery) |
+        df.apply(has_experience_math_failure, axis=1) |
+        certs_col.apply(has_future_certs)
+    )
+    num_flagged = mask_any_trap.sum()
+    if num_flagged > 0:
+        print(f"Flagged and removed {num_flagged} honeypot candidates via DataFrame mask.")
+    return df[~mask_any_trap].copy()
 
 # ==========================================
 # 1. PANDAS FILTERING & SCORING (Your Code)
@@ -22,12 +82,15 @@ def col_score_calc(df, source_col, min, max, pow=2, penalty=None, invert=False):
     return scaled
 
 def filter_candidates(df_new):
+    # Remove honeypots via DataFrame filtering
+    df_new = filter_honeypots_df(df_new)
+
     # 1. Explode career history
     df_exploded = df_new.explode('career_history')
     df_exploded['extracted_industry'] = df_exploded['career_history'].apply(
         lambda x: x.get('industry') if isinstance(x, dict) else None
     )
-    unwanted_industries = {"IT Services", "Consulting", "Manufacturing"}
+    unwanted_industries = {"IT Services", "Consulting", "Manufacturing", "Research", "Academia"}
     df_exploded['is_unwanted'] = df_exploded['extracted_industry'].isin(unwanted_industries)
     all_unwanted_mask = df_exploded.groupby(level=0)['is_unwanted'].all()
     mask = ~all_unwanted_mask.reindex(df_new.index, fill_value=False)
@@ -44,6 +107,12 @@ def filter_candidates(df_new):
     df_filtered3 = df_filtered2[df_filtered2['profile'].str['years_of_experience'] >= 4]
     df_filtered4 = df_filtered3[df_filtered3['profile'].str['country'] == "India"]
     df_filtered5 = df_filtered4[df_filtered4['redrob_signals'].str['notice_period_days'] <= 60]
+    
+    # Inactivity Cutoff: exclude candidates inactive for >180 days (relative to dataset snapshot) or with response rate < 10%
+    last_active = pd.to_datetime(df_filtered5['redrob_signals'].str['last_active_date'], errors='coerce')
+    cutoff_date = last_active.max() - pd.Timedelta(days=180) if not last_active.isna().all() else pd.to_datetime('1970-01-01')
+    resp_rate = df_filtered5['redrob_signals'].str['recruiter_response_rate'].fillna(0.0)
+    df_filtered5 = df_filtered5[(last_active >= cutoff_date) & (resp_rate >= 0.10)]
 
     # Target titles filter
     target_titles = [
@@ -90,6 +159,16 @@ def filter_candidates(df_new):
     df_filtered7 = df_filtered6[df_filtered6["career_history"].apply(remove_non_coding_seniors)]
     return df_filtered7
 
+TARGET_SKILLS = [
+    'bm25', 'elasticsearch', 'embedding', 'faiss', 'retrieval', 'learning to rank', 'milvus', 'opensearch',
+    'pinecone', 'pgvector', 'qdrant', 'ranking', 'recommendation', 'search', 'weaviate',
+    'deep learning', 'fine-tuning', 'hugging face', 'langchain', 'llamaindex', 'llm', 'lora', 'nlp', 'peft',
+    'prompt engineering', 'pytorch', 'qlora', 'rag', 'scikit-learn', 'sentence transformers', 'tensorflow',
+    'airflow', 'flink', 'bentoml', 'bigquery', 'databricks', 'dbt', 'docker', 'kafka', 'kubeflow', 'kubernetes',
+    'mlflow', 'mlops', 'snowflake', 'spark', 'weights & biases', 'aws', 'azure', 'fastapi', 'flask', 'gcp',
+    'go', 'grpc', 'microservices', 'postgresql', 'python', 'redis', 'rest api', 'rust', 'terraform'
+]
+
 def run_scoring_engine(df_input):
     df = df_input.copy()
     
@@ -121,16 +200,39 @@ def run_scoring_engine(df_input):
     df['github_score'] = (gh_clean / 100.0).clip(0.0, 1.0) ** 1.5
     df['market_demand_score'] = col_score_calc(df.assign(v=signals.str['saved_by_recruiters_30d']), 'v', 0, 15, pow=2)
     
-    def calculate_skills_average(row_dict):
-        if not isinstance(row_dict, dict) or 'skill_assessment_scores' not in row_dict:
-            return 0.3  
-        scores = row_dict.get('skill_assessment_scores', {})
-        if not scores or not isinstance(scores, dict): return 0.3
-        target_keys = ['NLP', 'Fine-tuning LLMs', 'Image Classification', 'Speech Recognition']
-        found_scores = [float(scores[k]) for k in target_keys if k in scores and pd.notna(scores[k])]
-        return np.mean(found_scores) / 100.0 if found_scores else 0.3
+    def calculate_skills_score(row):
+        skills = row.get('skills', []) if isinstance(row.get('skills'), list) else []
+        prof_map = {'expert': 1.0, 'advanced': 0.8, 'intermediate': 0.5}
+        prof_score = min(1.0, sum(prof_map.get(s.get('proficiency'), 0.2) for s in skills if isinstance(s, dict) and any(k in str(s.get('name', '')).lower() for k in TARGET_SKILLS)) / 4.0)
+        
+        signals = row.get('redrob_signals', {})
+        scores = signals.get('skill_assessment_scores', {}) if isinstance(signals, dict) else {}
+        found_scores = [float(v) for v in scores.values() if pd.notna(v)] if isinstance(scores, dict) else []
+        return 0.5 * prof_score + 0.5 * (np.mean(found_scores) / 100.0) if found_scores else prof_score * 0.9
 
-    df['skills_score'] = df['redrob_signals'].apply(calculate_skills_average)
+    df['skills_score'] = df.apply(calculate_skills_score, axis=1)
+    
+    def calculate_certs_score(row):
+        certs = row.get('certifications', []) if isinstance(row.get('certifications'), list) else []
+        rel = sum(1 for c in certs if isinstance(c, dict) and any(k in str(c.get('name', '')).lower() for k in ['machine learning', 'deep learning', 'cloud ml', 'nlp', 'langchain', 'ai', 'tensorflow', 'pytorch']))
+        return min(1.0, rel * 0.5)
+
+    def calculate_edu_score(row):
+        edus = row.get('education', []) if isinstance(row.get('education'), list) else []
+        if not edus: return 0.5
+        tier_map = {'tier_1': 1.0, 'tier_2': 0.8, 'tier_3': 0.6, 'tier_4': 0.4}
+        scores = []
+        for e in edus:
+            if not isinstance(e, dict): continue
+            t_score = tier_map.get(str(e.get('tier', '')).lower(), 0.5)
+            nums = re.findall(r"\d+(?:\.\d+)?", str(e.get('grade', '')))
+            val = float(nums[0]) if nums else 7.0
+            g_score = min(1.0, val / 4.0 if val <= 4.0 else (val / 10.0 if val <= 10.0 else val / 100.0))
+            scores.append(0.5 * t_score + 0.5 * g_score)
+        return np.mean(scores) if scores else 0.5
+
+    df['certs_score'] = df.apply(calculate_certs_score, axis=1)
+    df['education_score'] = df.apply(calculate_edu_score, axis=1)
     
     trust_matrix = signals.str['verified_email'].astype(int) + signals.str['verified_phone'].astype(int) + signals.str['linkedin_connected'].astype(int)
     df['trust_score'] = (trust_matrix / 3.0).clip(0.0, 1.0)
@@ -140,10 +242,10 @@ def run_scoring_engine(df_input):
 
     # PART 3: HYBRID ENGINE MATRIX
     behavioral_weights = {
-        "skills_score": 0.25, "github_score": 0.15, "interview_attendance_score": 0.15,
-        "recruiter_response_score": 0.10, "response_speed_score": 0.10, "market_demand_score": 0.08,
-        "profile_completeness_score_scaled": 0.07, "offer_conversion_score": 0.04,
-        "social_proof_score": 0.03, "trust_score": 0.03
+        "skills_score": 0.22, "github_score": 0.15, "interview_attendance_score": 0.15,
+        "recruiter_response_score": 0.08, "response_speed_score": 0.08, "market_demand_score": 0.08,
+        "certs_score": 0.05, "education_score": 0.05, "profile_completeness_score_scaled": 0.04,
+        "offer_conversion_score": 0.04, "social_proof_score": 0.03, "trust_score": 0.03
     }
     
     beh_cols = list(behavioral_weights.keys())
@@ -162,29 +264,9 @@ print("Loading Semantic Model...")
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 IDEAL_JD_QUERY = """
-Senior AI Engineer building production intelligence layers. 
-Deep technical depth in modern ML systems: embeddings, retrieval, ranking algorithms, 
-recommendation systems, vector databases, and hybrid search infrastructure. 
-Strong Python skills and scrappy product-engineering attitude. 
-Experience designing evaluation frameworks for ranking systems (NDCG, offline-to-online A/B testing).
-Shipped end-to-end ML models to real users at scale.
+AI Engineer building the intelligence layer for search, candidate-job matching, and recommendation systems. Requires applied ML engineering at a product company, shipping production-grade ranking or retrieval systems to real users. Essential experience includes production embedding-based retrieval, hybrid search, dense retrieval, and LLM-based re-ranking. Must have handled embedding drift, index refresh, and retrieval-quality regression in live environments. Requires strong Python and hands-on operational experience with vector databases and search infrastructure (Pinecone, Weaviate, Qdrant, Milvus, FAISS, OpenSearch, Elasticsearch). Must design and implement rigorous ranking evaluation frameworks using NDCG, MRR, MAP, offline-to-online correlation, and A/B testing. Preferred expertise covers learning-to-rank (XGBoost, neural), LLM fine-tuning (LoRA, QLoRA, PEFT), large-scale inference optimization, and distributed systems. Blends ML architecture with rapid product-engineering and end-to-end deployment.
 """
 IDEAL_VECTOR = model.encode(IDEAL_JD_QUERY, convert_to_tensor=True)
-
-def is_honeypot(candidate):
-    signals = candidate.get('redrob_signals', {})
-    if signals.get('signup_date') and signals.get('last_active_date') and signals.get('last_active_date') < signals.get('signup_date'):
-        return True
-    for skill in candidate.get('skills', []):
-        if skill.get('proficiency') in ['expert', 'advanced'] and skill.get('duration_months', 0) == 0:
-            return True
-    for job in candidate.get('career_history', []):
-        if job.get('start_date') and job.get('end_date') and job.get('start_date') > job.get('end_date'):
-            return True
-    salary = signals.get('expected_salary_range_inr_lpa', {})
-    if salary.get('min', 0) > salary.get('max', 0):
-        return True
-    return False
 
 def extract_candidate_text(candidate):
     profile = candidate.get('profile', {})
@@ -203,12 +285,7 @@ def generate_reasoning(candidate, score):
     
     # 2. Extract Specific AI Skills
     all_skills = [s.get('name') for s in candidate.get('skills', [])]
-    ai_roots = [
-        'ranking', 'retrieval', 'recommend', 'search', 'hybrid search', 're-ranking', 'bm25', 'learning-to-rank', 'ltr',
-        'pinecone', 'weaviate', 'qdrant', 'milvus', 'opensearch', 'elasticsearch', 'faiss', 'vector', 
-        'embed', 'sentence-transformers', 'bge', 'e5', 'openai', 'llm', 'fine-tuning', 'lora', 'qlora', 'peft', 'generative',
-        'ndcg', 'mrr', 'map', 'a/b test', 'evaluation', 'python', 'xgboost', 'neural'
-    ]
+    ai_roots = TARGET_SKILLS
     
     core_ai_skills = []
     for skill in all_skills:
@@ -227,6 +304,10 @@ def generate_reasoning(candidate, score):
         # Highlight up to 2 specific skills so it proves we actually read their profile
         skill_preview = ", ".join(core_ai_skills[:2])
         drivers.append(f"{num_ai_skills} JD-aligned core skills (e.g., {skill_preview})")
+        
+    rel_certs = [c.get('name') for c in candidate.get('certifications', []) if isinstance(c, dict) and any(k in str(c.get('name', '')).lower() for k in ['machine learning', 'deep learning', 'cloud ml', 'nlp', 'langchain', 'ai', 'tensorflow', 'pytorch'])]
+    if rel_certs:
+        drivers.append(f"top-tier AI/ML certification ({rel_certs[0]})")
         
     # Logistics Driver
     loc = str(profile.get('location', '')).lower()
@@ -322,7 +403,8 @@ if __name__ == "__main__":
     
     print("2. Applying aggressive Pandas Hard Filters...")
     df_filtered = filter_candidates(df_data)
-    print("Columns after filtering:", df_filtered.columns.tolist())
+    num_hard_filtered = len(df_data) - len(df_filtered)
+    print(f"Filtered out {num_hard_filtered} candidates before semantic search via hard filters (remaining: {len(df_filtered)}).")
 
     print("3. Calculating Logistics & Behavioral scores...")
     df_ranked = run_scoring_engine(df_filtered)
@@ -333,17 +415,22 @@ if __name__ == "__main__":
     # Convert back to standard Python dicts for NLP and Honeypot checks
     candidates_list = df_top_pool.to_dict('records')
     
+    total_excluded_before_nlp = len(df_data) - len(candidates_list)
     final_pool = []
-    print(f"4. Running NLP Semantic Search on top {len(candidates_list)} candidates...")
-    for candidate in candidates_list:
-        # Catch any honeypots the Pandas script missed
-        if is_honeypot(candidate):
-            continue
-            
+    print(f"4. Running NLP Semantic Search on top {len(candidates_list)} candidates ({total_excluded_before_nlp} candidates filtered/excluded before semantic search)...")
+    for idx, candidate in enumerate(candidates_list):
         candidate_text = extract_candidate_text(candidate)
+        if idx < 10:
+            print(f"\n--- Candidate {idx+1} ({candidate['candidate_id']}) Semantic Search Text ---")
+            print(candidate_text)
         candidate_vector = model.encode(candidate_text, convert_to_tensor=True)
         cosine_score = util.cos_sim(IDEAL_VECTOR, candidate_vector).item()
         semantic_score = max(0.0, cosine_score)
+        
+        text_lower = candidate_text.lower()
+        penalties = sum(p in text_lower for p in ['want to', 'looking to grow into', 'learning', 'handled by another team'])
+        boosts = sum(p in text_lower for p in ['shipped', 'owned', 'deployed'])
+        semantic_score = semantic_score * (1.2 ** boosts) * (0.8 ** penalties)
         
         # Combine your Pandas fit score with our Semantic NLP score
         pandas_score = candidate.get('final_fit_score', 0)
