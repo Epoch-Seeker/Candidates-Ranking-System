@@ -19,7 +19,7 @@ mode = st.radio(
     horizontal=True
 )
 
-target_file = "candidates1000.json" if mode.startswith("Pre-loaded") else None
+target_file = "sample_candidates.json" if mode.startswith("Pre-loaded") else None
 if not mode.startswith("Pre-loaded"):
     uploaded_file = st.file_uploader("Upload Candidate Pool File", type=["json", "jsonl", "gz"])
     if uploaded_file:
