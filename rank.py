@@ -327,11 +327,11 @@ if __name__ == "__main__":
 
     # Write to Submission CSV
     print("5. Generating Submission CSV...")
-    with open("team_submission.csv", mode='w', newline='', encoding='utf-8') as file:
+    with open(args.out, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['candidate_id', 'rank', 'score', 'reasoning'])
         for rank, item in enumerate(top_100, start=1):
             reasoning = generate_reasoning(item['candidate_data'], item['final_score'])
             writer.writerow([item['candidate_id'], rank, round(item['final_score'], 4), reasoning])
             
-    print("✅ Pipeline Complete! Output written to team_submission.csv")
+    print(f"✅ Pipeline Complete! Output written to {args.out}")
