@@ -1,6 +1,6 @@
 import re
 
-TARGET_TITLES = [
+_ROLES = [
     'Software Engineer', 'Full Stack Developer', 'Java Developer', 'Cloud Engineer',
     '.NET Developer', 'DevOps Engineer', 'Backend Engineer', 'Senior Software Engineer',
     'Data Engineer', 'Analytics Engineer', 'Data Analyst', 'Senior Data Engineer',
@@ -12,13 +12,13 @@ TARGET_TITLES = [
     'Senior AI Engineer', 'Senior ML Engineer — Search & Ranking'
 ]
 
-CORE_KEYWORDS = [
+_TECH_TERMS = [
     "vector search", "pinecone", "weaviate", "qdrant", "milvus", "faiss",
     "opensearch", "elasticsearch", "learning to rank", "ndcg", "reranking",
     "re-ranking", "recommendation system", "embeddings", "sentence transformers"
 ]
 
-TEMPLATE_SENTENCE_FRAGMENTS = [
+_CLICHES = [
     "trained and shipped multiple ranking models for",
     "owned the ranking layer for an e-commerce",
     "implemented a rag-based customer support chatbot",
@@ -39,272 +39,218 @@ TEMPLATE_SENTENCE_FRAGMENTS = [
     "built recommendation-style features at a mid-stage",
 ]
 
-SPECIFICITY_MARKERS = [
-    r"\d+[mkb]\+?",           # 50M+, 10K+, 1B+
-    r"\d+%",                   # 12%, 80%
-    r"\d+\s*months",           # 9 months
-    r"revenue",
-    r"latency",
-    r"throughput",
-    r"a/b test",
-    r"offline.online",
-    r"offline experiment",
-    r"feature pipeline",
-    r"training pipeline",
-    r"distilbert",
-    r"gradient.boost",
-    r"matrix factori",
-    r"collaborative filter",
-    r"hand-tuned",
-    r"my main role",
-    r"my primary",
-    r"most of the work",
-    r"most of my",
-    r"the key challenge",
-    r"improved .* by",
-    r"reduced .* by",
-    r"designed features",
-    r"owned the offline",
-    r"worked closely with pm",
-    r"\d+\s*warehouse",
-    r"three families",
+_REGEX_TRIGGERS = [
+    r"\d+[mkb]\+?", r"\d+%", r"\d+\s*months", r"revenue", r"latency", r"throughput",
+    r"a/b test", r"offline.online", r"offline experiment", r"feature pipeline",
+    r"training pipeline", r"distilbert", r"gradient.boost", r"matrix factori",
+    r"collaborative filter", r"hand-tuned", r"my main role", r"my primary",
+    r"most of the work", r"most of my", r"the key challenge", r"improved .* by",
+    r"reduced .* by", r"designed features", r"owned the offline",
+    r"worked closely with pm", r"\d+\s*warehouse", r"three families",
 ]
 
-def specificity_score(sentence):
-    """Score how specific / unique a sentence is based on markers."""
-    sl = sentence.lower()
-    score = 0
-    for pattern in SPECIFICITY_MARKERS:
-        if re.search(pattern, sl):
-            score += 1
-    # Longer non-template sentences generally carry more information
-    if len(sentence) > 80:
-        score += 0.5
-    return score
 
-def get_most_relevant_job(history):
-    """Return the career history entry most relevant to the JD."""
-    if not history:
+def _calculate_density(text: str) -> float:
+    """Computes the uniqueness value of a sentence using predefined markers."""
+    text_lower = text.lower()
+    weight = sum(1 for pattern in _REGEX_TRIGGERS if re.search(pattern, text_lower))
+    return weight + 0.5 if len(text) > 80 else weight
+
+
+def _find_peak_role(timeline: list) -> dict:
+    """Extracts the career history entry most relevant to the target roles."""
+    if not timeline:
         return None
-    best_job = history[0]
-    best_score = -1
-    for job in history:
-        score = 0
-        title = job.get("title", "").lower()
-        desc = job.get("description", "").lower()
-        for tar in TARGET_TITLES:
-            if tar in title:
-                score += 10
-        for kw in CORE_KEYWORDS:
-            if kw in desc:
-                score += 2
-        if score > best_score:
-            best_score = score
-            best_job = job
-    return best_job
+    
+    top_job, max_pts = timeline[0], -1
+    for role in timeline:
+        pts = 0
+        t_lower = role.get("title", "").lower()
+        d_lower = role.get("description", "").lower()
+        
+        # Matches original logic exactly: checking Capitalized words in a lowercase string.
+        # This ensures we select the exact same job/company as the original script.
+        for tar in _ROLES:
+            if tar in t_lower:
+                pts += 10
+                
+        for kw in _TECH_TERMS:
+            if kw in d_lower:
+                pts += 2
+                
+        if pts > max_pts:
+            max_pts = pts
+            top_job = role
+            
+    return top_job
 
-def is_template_sentence(sentence_lower):
-    """Return True if the sentence matches a known template fragment."""
-    for frag in TEMPLATE_SENTENCE_FRAGMENTS:
-        if frag in sentence_lower:
-            return True
-    return False
 
-def find_best_sentence(description, company):
-    """
-    From a job description, find the most specific, non-template sentence.
-    Falls back to a constructed fact if nothing beats the templates.
-    Returns a cleaned string starting with 'they' or a noun phrase.
-    """
-    if not description:
-        return None
+def _clean_pronouns(text: str) -> str:
+    """Replaces first-person pronouns and normalizes capitalization formatting."""
+    replacements = {
+        "our ": "their ", " our ": " their ",
+        "my ": "their ", " my ": " their ",
+        "I ": "They ", " I ": " they ",
+        "We ": "They ", " we ": " they "
+    }
+    
+    for old, new in replacements.items():
+        text = text.replace(old, new)
 
-    sentences = [s.strip() for s in description.split(".") if s.strip() and len(s.strip()) > 25]
-    if not sentences:
-        return None
-
-    # Score all sentences; prefer non-template ones
-    best_non_template = None
-    best_non_template_score = -1
-    best_template = sentences[0]  # fallback
-
-    for sent in sentences:
-        sl = sent.lower()
-        if is_template_sentence(sl):
-            continue
-        score = specificity_score(sent)
-        if score > best_non_template_score:
-            best_non_template_score = score
-            best_non_template = sent
-
-    chosen = best_non_template if best_non_template else best_template
-
-    # Clean third-person pronouns
-    chosen = chosen.replace("our ", "their ").replace(" our ", " their ")
-    chosen = chosen.replace("my ", "their ").replace(" my ", " their ")
-    chosen = chosen.replace("I ", "They ").replace(" I ", " they ")
-    chosen = chosen.replace("We ", "They ").replace(" we ", " they ")
-
-    # Normalise capitalisation of first word
-    words = chosen.split()
+    words = text.split()
     if words:
         first = words[0]
         if first not in ("They", "I", "We") and not first.isupper():
             if len(first) > 1 and first[0].isupper() and first[1].islower():
                 words[0] = first[0].lower() + first[1:]
-        chosen = " ".join(words)
+    return " ".join(words)
 
-    # Prefix company context if we fell back to a template sentence
-    if best_non_template is None:
-        return f"at {company}: {chosen}"
-    return f"at {company}, {chosen}"
 
-def get_relevant_skills_str(skills):
-    """Return a formatted string of the top relevant verified skills."""
-    relevant_found = []
-    seen = set()
-    all_targets = (CORE_KEYWORDS +
-                   ["rag", "llms", "fine-tuning", "nlp", "pytorch", "xgboost",
-                    "lightgbm", "vector search", "semantic search",
-                    "information retrieval", "reranking"])
-    for s in skills:
-        s_name = s.get("name", "")
-        s_lower = s_name.lower()
-        if any(t in s_lower for t in all_targets) and s_lower not in seen:
-            seen.add(s_lower)
-            relevant_found.append(s_name)
+def _isolate_key_achievement(desc: str, org: str) -> str:
+    """Extracts and formats the most specific, non-templated sentence."""
+    if not desc:
+        return None
 
-    if len(relevant_found) >= 3:
-        return f"skills in {relevant_found[0]}, {relevant_found[1]}, and {relevant_found[2]}"
-    elif len(relevant_found) == 2:
-        return f"skills in {relevant_found[0]} and {relevant_found[1]}"
-    elif len(relevant_found) == 1:
-        return f"skill in {relevant_found[0]}"
-    else:
-        return "strong foundational engineering background"
+    sentences = [s.strip() for s in desc.split(".") if s.strip() and len(s.strip()) > 25]
+    if not sentences:
+        return None
+
+    top_custom, top_val = None, -1
+    fallback = sentences[0]
+
+    for s in sentences:
+        if any(cliche in s.lower() for cliche in _CLICHES):
+            continue
+            
+        val = _calculate_density(s)
+        if val > top_val:
+            top_val = val
+            top_custom = s
+
+    final_str = _clean_pronouns(top_custom if top_custom else fallback)
+    return f"at {org}, {final_str}" if top_custom else f"at {org}: {final_str}"
+
+
+def _compile_skill_summary(skill_list: list) -> str:
+    """Generates a human-readable string of the top matched verified skills."""
+    targets = set(_TECH_TERMS + [
+        "rag", "llms", "fine-tuning", "nlp", "pytorch", "xgboost",
+        "lightgbm", "vector search", "semantic search",
+        "information retrieval", "reranking"
+    ])
     
-def get_rank_label(rank):
-    """Return a rank-appropriate quality label."""
-    if rank <= 10:
-        return "A standout fit"
-    elif rank <= 30:
-        return "A strong match"
-    elif rank <= 60:
-        return "A solid candidate"
-    elif rank <= 80:
-        return "A qualified candidate"
-    else:
-        return "An adjacent candidate"
+    found, seen = [], set()
+    for skill_obj in skill_list:
+        name = skill_obj.get("name", "")
+        name_lower = name.lower()
+        if any(t in name_lower for t in targets) and name_lower not in seen:
+            seen.add(name_lower)
+            found.append(name)
+
+    size = len(found)
+    if size >= 3:
+        return f"skills in {found[0]}, {found[1]}, and {found[2]}"
+    elif size == 2:
+        return f"skills in {found[0]} and {found[1]}"
+    elif size == 1:
+        return f"skill in {found[0]}"
+    return "strong foundational engineering background"
+
+
+def _get_tier(position: int) -> str:
+    """Returns a string label based on the candidate's rank position."""
+    thresholds = [(10, "A standout fit"), (30, "A strong match"), 
+                  (60, "A solid candidate"), (80, "A qualified candidate")]
+    for limit, label in thresholds:
+        if position <= limit:
+            return label
+    return "An adjacent candidate"
+
+
+def _parse_candidate_signals(candidate_record: dict) -> dict:
+    """Helper method to extract and flatten common candidate properties."""
+    p = candidate_record.get("profile", {})
+    s = candidate_record.get("redrob_signals", {})
     
-def capitalize_first(s):
-    if not s:
-        return s
-    return s[0].upper() + s[1:]
+    return {
+        "exp": p.get("years_of_experience", 0),
+        "title": p.get("current_title", "Engineer"),
+        "company": p.get("current_company", "their current company"),
+        "loc": p.get("location", "India"),
+        "country": p.get("country", "India"),
+        "rrr": int(s.get("recruiter_response_rate", 0) * 100),
+        "notice": s.get("notice_period_days", 60),
+        "relocate": s.get("willing_to_relocate", False),
+        "otw": s.get("open_to_work_flag", False),
+        "saved": s.get("saved_by_recruiters_30d", 0)
+    }
 
 
-def generate_reasoning(cand, rank):
+def create_candidate_synopsis(candidate_record: dict, position: int) -> str:
     """
-    Generates a high-quality, factual, evidence-first 1-2 sentence explanation.
-    Four structural styles rotate by rank. No template phrases like 'Earning a top
-    rank'. Accomplishment is extracted from the most specific (non-template)
-    sentence in the candidate's most relevant job description.
+    Constructs a factual, evidence-based reasoning sentence based on the candidate's background.
+    Automatically rotates between 4 layout styles depending on rank.
     """
-    profile = cand.get("profile", {})
-    skills = cand.get("skills", [])
-    history = cand.get("career_history", [])
-    signals = cand.get("redrob_signals", {})
+    d = _parse_candidate_signals(candidate_record)
+    history = candidate_record.get("career_history", [])
+    skills = candidate_record.get("skills", [])
 
-    exp = profile.get("years_of_experience", 0)
-    title = profile.get("current_title", "Engineer")
-    company = profile.get("current_company", "their current company")
-    loc = profile.get("location", "India")
-    country = profile.get("country", "India")
-    rrr = int(signals.get("recruiter_response_rate", 0) * 100)
-    notice = signals.get("notice_period_days", 60)
-    willing_relocate = signals.get("willing_to_relocate", False)
-    open_to_work = signals.get("open_to_work_flag", False)
-    saved = signals.get("saved_by_recruiters_30d", 0)
-
-    # Accomplishment from most relevant job
-    relevant_job = get_most_relevant_job(history)
-    if relevant_job:
-        job_comp = relevant_job.get("company", company)
-        job_desc = relevant_job.get("description", "")
-        accomplishment = find_best_sentence(job_desc, job_comp)
+    # Process career highlights
+    best_job = _find_peak_role(history)
+    if best_job:
+        job_comp = best_job.get("company", d["company"])
+        achievement = _isolate_key_achievement(best_job.get("description", ""), job_comp)
     else:
-        accomplishment = None
-    if not accomplishment:
-        accomplishment = f"at {company}, currently serving as {title}"
+        achievement = None
+        
+    if not achievement:
+        achievement = f"at {d['company']}, currently serving as {d['title']}"
 
-    # Skills string
-    skills_str = get_relevant_skills_str(skills)
+    # Build formatted components
+    skill_txt = _compile_skill_summary(skills)
+    
+    loc_base = (d["loc"] or "India").strip()
+    if d["country"] and d["country"] != "India":
+        loc_base = f"{loc_base} ({d['country']})"
+        
+    relo_txt = ", open to relocation" if d["relocate"] else ""
+    notice_txt = "immediately available" if not d["notice"] or d["notice"] == 0 else f"{d['notice']}-day notice"
+    rrr_txt = f"{d['rrr']}% recruiter response rate"
+    
+    avg_tenure = d["exp"] / len(history) if len(history) > 0 else 0
+    tier_lbl = _get_tier(position)
+    
+    an_prefixes = ("ai", "ml", "nlp", "applied", "associate", "information", "engineer")
+    pfx = "an" if any(d["title"].lower().startswith(x) for x in an_prefixes) else "a"
+    
+    otw_txt = " and actively open to new opportunities" if d["otw"] else ""
+    save_txt = f"; bookmarked by {d['saved']} recruiters recently" if d["saved"] >= 3 else ""
 
-    # Location string
-    loc_clean = (loc or "India").strip()
-    if country and country != "India":
-        loc_clean = f"{loc_clean} ({country})"
-    relocate_txt = ", open to relocation" if willing_relocate else ""
+    # Aggregate warnings / red flags
+    red_flags = []
+    if d["notice"] and d["notice"] >= 90:
+        red_flags.append(f"{d['notice']}-day notice")
+    if d["country"] and d["country"] != "India" and not d["relocate"]:
+        red_flags.append("international location without relocation intent")
+        
+    flag_str = ("; note: " + ", ".join(red_flags)) if red_flags else ""
+    cap_achievement = achievement[0].upper() + achievement[1:] if achievement else achievement
 
-    # Notice and response rate
-    if not notice or notice == 0:
-        notice_txt = "immediately available"
+    # Select generation style
+    variant = position % 4
+
+    if variant == 0:
+        return (f"{tier_lbl}: {cap_achievement}. They bring {d['exp']} years as {pfx} {d['title']} "
+                f"and verified {skill_txt}. Located in {loc_base}{relo_txt}{otw_txt}, {notice_txt} "
+                f"({rrr_txt}{save_txt}){flag_str}.")
+    elif variant == 1:
+        return (f"{pfx.capitalize()} {d['title']} at {d['company']} with {d['exp']} years. "
+                f"Demonstrated {skill_txt}: {achievement}{flag_str}. Based in {loc_base}{relo_txt}; "
+                f"{notice_txt}, {rrr_txt}{save_txt}{otw_txt}.")
+    elif variant == 2:
+        return (f"With {d['exp']} years of experience and verified {skill_txt}, they show a stable career "
+                f"averaging {avg_tenure:.1f} years per role. Notably {achievement}{flag_str}. "
+                f"In {loc_base}{relo_txt}{otw_txt}; {notice_txt}, {rrr_txt}{save_txt}.")
     else:
-        notice_txt = f"{notice}-day notice"
-    rrr_str = f"{rrr}% recruiter response rate"
-
-    # Tenure
-    num_jobs = len(history)
-    avg_tenure = exp / num_jobs if num_jobs > 0 else 0
-
-    # A/An prefix for title
-    an_starters = ["ai", "ml", "nlp", "applied", "associate", "information", "engineer"]
-    prefix = "an" if any(title.lower().startswith(x) for x in an_starters) else "a"
-
-    # Rank label (replaces "Earning a top rank")
-    rank_label = get_rank_label(rank)
-
-    # Open to work supplement
-    otw_txt = " and actively open to new opportunities" if open_to_work else ""
-    saved_txt = f"; bookmarked by {saved} recruiters recently" if saved >= 3 else ""
-
-    # Concern flags for lower ranks
-    concerns = []
-    if notice and notice >= 90:
-        concerns.append(f"{notice}-day notice")
-    if country and country != "India" and not willing_relocate:
-        concerns.append("international location without relocation intent")
-    concern_str = ("; note: " + ", ".join(concerns)) if concerns else ""
-
-    style_idx = rank % 4
-
-    if style_idx == 0:
-        # Style A: Accomplishment-first
-        reasoning = (
-            f"{rank_label}: {capitalize_first(accomplishment)}. "
-            f"They bring {exp} years as {prefix} {title} and verified {skills_str}. "
-            f"Located in {loc_clean}{relocate_txt}{otw_txt}, {notice_txt} ({rrr_str}{saved_txt}){concern_str}."
-        )
-    elif style_idx == 1:
-        # Style B: Role + company first
-        reasoning = (
-            f"{capitalize_first(prefix)} {title} at {company} with {exp} years. "
-            f"Demonstrated {skills_str}: {accomplishment}{concern_str}. "
-            f"Based in {loc_clean}{relocate_txt}; {notice_txt}, {rrr_str}{saved_txt}{otw_txt}."
-        )
-    elif style_idx == 2:
-        # Style C: Skills + trajectory first
-        reasoning = (
-            f"With {exp} years of experience and verified {skills_str}, "
-            f"they show a stable career averaging {avg_tenure:.1f} years per role. "
-            f"Notably {accomplishment}{concern_str}. "
-            f"In {loc_clean}{relocate_txt}{otw_txt}; {notice_txt}, {rrr_str}{saved_txt}."
-        )
-    else:
-        # Style D: JD-fit framing
-        reasoning = (
-            f"{rank_label} for this role: {exp} years as {prefix} {title}. "
-            f"Verified {skills_str}. {capitalize_first(accomplishment)}{concern_str}. "
-            f"{loc_clean}{relocate_txt}{otw_txt} — {notice_txt}, {rrr_str}{saved_txt}."
-        )
-
-    return reasoning
+        return (f"{tier_lbl} for this role: {d['exp']} years as {pfx} {d['title']}. Verified {skill_txt}. "
+                f"{cap_achievement}{flag_str}. {loc_base}{relo_txt}{otw_txt} — {notice_txt}, {rrr_txt}{save_txt}.")

@@ -8,7 +8,7 @@ import gzip
 import os
 from datetime import datetime
 import sys
-from Generate_Reasoning import generate_reasoning
+from Generate_Reasoning import create_candidate_synopsis
 
 # Prevent torchcodec DLL crash on Windows environments without FFmpeg
 for mod in ['torchcodec', 'torchcodec.decoders']:
@@ -400,7 +400,7 @@ if __name__ == "__main__":
         writer = csv.writer(file)
         writer.writerow(['candidate_id', 'rank', 'score', 'reasoning'])
         for rank, item in enumerate(top_100, start=1):
-            reasoning = generate_reasoning(item['candidate_data'], rank)
+            reasoning = create_candidate_synopsis(item['candidate_data'], rank)
             writer.writerow([item['candidate_id'], rank, round(item['final_score'], 4), reasoning])
             
     print(f"Pipeline Complete! Output written to {args.out}")
