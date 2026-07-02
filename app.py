@@ -94,15 +94,24 @@ if "results" in st.session_state:
     if len(df) == 0:
         st.warning("⚠️ **No candidates left after honeypot filtration and hard disqualification filters!** An empty submission.csv was generated.")
     else:
-        st.subheader("Ranked Leaderboard")
-        st.dataframe(df, use_container_width=True)
+        st.subheader("Ranked Leaderboard (Top 10)")
+        st.dataframe(
+            df.head(10),
+            column_config={
+                "candidate_id": st.column_config.TextColumn("Candidate ID", width=200),
+                "rank": st.column_config.NumberColumn("Rank", width=80),
+                "score": st.column_config.NumberColumn("Score", width=80),
+                "reasoning": st.column_config.TextColumn("Reasoning", width=1200)
+            },
+            use_container_width=True
+        )
         
         with open(OUTPUT_FILE, "rb") as f:
             st.download_button("Download submission.csv", data=f, file_name="submission.csv", mime="text/csv")
         
         # 4. Candidate Inspector (Persistent & Detailed)
         with st.expander("Candidate Inspector (View Raw JSON & Profile Breakdown)", expanded=True):
-            sel_id = st.selectbox("Select Candidate ID to Inspect:", df["candidate_id"].tolist())
+            sel_id = st.selectbox("Select Candidate ID to Inspect:", df["candidate_id"].head(10).tolist())
             if sel_id:
                 row = df[df["candidate_id"] == sel_id].iloc[0]
                 st.markdown(f"### Rank #{row['rank']} | Candidate `{sel_id}` | Fit Score: `{row['score']}`")
