@@ -226,7 +226,7 @@ def run_scoring_engine(df_input):
     def calculate_edu_score(row):
         edus = row.get('education', []) if isinstance(row.get('education'), list) else []
         if not edus: return 0.5
-        tier_map = {'tier_1': 1.0, 'tier_2': 0.8, 'tier_3': 0.6, 'tier_4': 0.4}
+        tier_map = {'tier_1': 1.0, 'tier_2': 0.7, 'tier_3': 0.5, 'tier_4': 0.3}
         scores = []
         for e in edus:
             if not isinstance(e, dict): continue
@@ -244,7 +244,7 @@ def run_scoring_engine(df_input):
     df['trust_score'] = (trust_matrix / 3.0).clip(0.0, 1.0)
 
     min_expectation = signals.apply(lambda x: x.get('expected_salary_range_inr_lpa', {}).get('min', 0.0) if isinstance(x, dict) else 0.0).fillna(0.0)
-    df['salary_alignment_score'] = np.where(min_expectation > 30.0, 0.0, 1.0)
+    df['salary_alignment_score'] = np.where(min_expectation > 60.0, 0.0, 1.0)
 
     # PART 3: HYBRID ENGINE MATRIX
     behavioral_weights = {
@@ -263,7 +263,7 @@ def run_scoring_engine(df_input):
 
 
 # ==========================================
-# 2. NLP & HONEYPOT LOGIC (Our Code)
+# 2. NLP LOGIC 
 # ==========================================
 
 _semantic_model = None
@@ -275,7 +275,7 @@ def get_semantic_model_and_vector():
         print("Loading Semantic Model...")
         _semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
         IDEAL_JD_QUERY = """
-AI Engineer building the intelligence layer for search, candidate-job matching, and recommendation systems. Requires applied ML engineering at a product company, shipping production-grade ranking or retrieval systems to real users. Essential experience includes production embedding-based retrieval, hybrid search, dense retrieval, and LLM-based re-ranking. Must have handled embedding drift, index refresh, and retrieval-quality regression in live environments. Requires strong Python and hands-on operational experience with vector databases and search infrastructure (Pinecone, Weaviate, Qdrant, Milvus, FAISS, OpenSearch, Elasticsearch). Must design and implement rigorous ranking evaluation frameworks using NDCG, MRR, MAP, offline-to-online correlation, and A/B testing. Preferred expertise covers learning-to-rank (XGBoost, neural), LLM fine-tuning (LoRA, QLoRA, PEFT), large-scale inference optimization, and distributed systems. Blends ML architecture with rapid product-engineering and end-to-end deployment.
+Senior AI Engineer building the intelligence layer for search, candidate-job matching, and recommendation systems. Requires applied ML engineering at a product company, shipping production-grade ranking or retrieval systems to real users. Essential experience includes production embedding-based retrieval, hybrid search, dense retrieval, and LLM-based re-ranking. Must have handled embedding drift, index refresh, and retrieval-quality regression in live environments. Requires strong Python and hands-on operational experience with vector databases and search infrastructure (Pinecone, Weaviate, Qdrant, Milvus, FAISS, OpenSearch, Elasticsearch). Must design and implement rigorous ranking evaluation frameworks using NDCG, MRR, MAP, offline-to-online correlation, and A/B testing. Preferred expertise covers learning-to-rank (XGBoost, neural), LLM fine-tuning (LoRA, QLoRA, PEFT), large-scale inference optimization, and distributed systems. Blends ML architecture with rapid product-engineering and end-to-end deployment.
 """
         _ideal_vector = _semantic_model.encode(IDEAL_JD_QUERY, convert_to_tensor=True)
     return _semantic_model, _ideal_vector
