@@ -410,8 +410,6 @@ if __name__ == "__main__":
 
     print(f"Loaded {len(data)} candidates.")
     df_data = pd.DataFrame(data)
-    print("Columns before filtering:", df_data.columns.tolist())
-    # print(df_data.head(1))
     
     print("2. Applying aggressive Pandas Hard Filters...")
     df_filtered = filter_candidates(df_data)
