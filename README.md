@@ -36,7 +36,7 @@ As stated in the job description: *"We'd rather see 10 great matches than 1000 m
 | **Country Cutoff** | Excludes candidates outside India (`country == "India"`). | *"Outside India: case-by-case, but we don't sponsor work visas."* |
 | **Notice Period Cutoff** | Excludes candidates with a notice period `> 60 days` (`notice_period_days <= 60`). | *"We'd love sub-30-day notice... 30+ day notice candidates are still in scope but the bar gets higher."* |
 | **Target Engineering Titles** | Excludes candidates who have never held a relevant Software, ML, AI, Backend, or Data Engineering title in their career history. | *"A candidate who has all the AI keywords listed as skills but whose title is 'Marketing Manager' is not a fit, no matter how perfect their skill list looks."* |
-| **Non-Coding Seniors Disqualifier** | Excludes candidates whose career history has titles matching `'Senior|Staff|Lead'` with a duration `> 18 months`. | *"If you are a senior engineer who hasn't written production code in the last 18 months because you've moved into 'architecture' or 'tech lead' roles — we will probably not move forward. This role writes code."* |
+| **Non-Coding Seniors Disqualifier** | Excludes candidates whose career history has titles matching `'Senior,Staff,Lead'` with a duration `> 18 months`. | *"If you are a senior engineer who hasn't written production code in the last 18 months because you've moved into 'architecture' or 'tech lead' roles — we will probably not move forward. This role writes code."* |
 | **Inactivity & Ghoster Cutoff** | Excludes candidates inactive for `> 180 days` (relative to dataset snapshot) or with a recruiter response rate `< 10%`. | *"A perfect-on-paper candidate who hasn't logged in for 6 months and has a 5% response rate is, for hiring purposes, not actually available."* |
 
 > **Execution Result:** Filtered out **97,533** candidates before semantic search via hard filters (leaving **2,467** high-signal candidates for behavioral scoring and the top 1,000 for deep NLP semantic search).
@@ -66,7 +66,7 @@ Candidates surviving the hard filters are evaluated through a two-part scoring e
 
 ### B. Logistics Match Score
 * **Location Alignment**: Candidates in **Tier-1 hubs (Pune/Noida)** receive `1.0`. Candidates in **Tier-2 hubs (Hyderabad/Mumbai/Delhi/NCR/Bangalore)** willing to relocate receive `0.9`. Others willing to relocate receive `0.7`.
-* **Salary Alignment**: Candidates with expected minimum salary `<= 30 LPA` receive `1.0`; extreme outliers above budget receive `0.0`.
+* **Salary Alignment**: Candidates with expected minimum salary `<= 60 LPA` receive `1.0`; extreme outliers above budget receive `0.0`.
 
 ---
 
