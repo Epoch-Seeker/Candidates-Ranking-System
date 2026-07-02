@@ -8,6 +8,7 @@ import gzip
 import os
 from datetime import datetime
 import sys
+from Generate_Reasoning import generate_reasoning
 
 # Prevent torchcodec DLL crash on Windows environments without FFmpeg
 for mod in ['torchcodec', 'torchcodec.decoders']:
@@ -262,124 +263,6 @@ def run_scoring_engine(df_input):
     
     return df.sort_values(by='final_fit_score', ascending=False)
 
-def generate_reasoning(candidate, score):
-    profile = candidate.get('profile', {})
-    signals = candidate.get('redrob_signals', {})
-    skills_list = candidate.get('skills', [])
-    
-    # ---------------------------------------------------------
-    # 1. DEEP DATA EXTRACTION
-    # ---------------------------------------------------------
-    title = str(profile.get('current_title', 'Engineer')).strip()
-    yoe = float(profile.get('years_of_experience', 0.0))
-    notice_days = int(profile.get('notice_period_days', 0))
-    
-    # Safely extract skill names
-    all_skills = [s.get('name', '').lower() for s in skills_list if isinstance(s, dict) and s.get('name')]
-    
-    # Micro-categorize skills specifically for the Redrob JD
-    retrieval_skills = [s for s in all_skills if any(x in s for x in ['rag', 'retrieval', 'vector', 'search'])]
-    eval_skills = [s for s in all_skills if any(x in s for x in ['ndcg', 'mrr', 'evaluation', 'metrics'])]
-    gen_ai_skills = [s for s in all_skills if any(x in s for x in ['llm', 'langchain', 'openai', 'transformer'])]
-    
-    # Extract behavioral metrics
-    github = int(signals.get('github_activity_score', 0))
-    resp_rate = float(signals.get('recruiter_response_rate', 1.0))
-    int_comp = float(signals.get('interview_completion_rate', 1.0))
-    demand = int(signals.get('saved_by_recruiters_30d', 0))
-
-    # ---------------------------------------------------------
-    # 2. DYNAMIC PERSONA & STRENGTH MAPPING
-    # ---------------------------------------------------------
-    strengths = []
-    persona = "Applied Engineer"
-    
-    # Determine Candidate Persona based on dominant traits
-    if yoe >= 8.0 and (retrieval_skills or gen_ai_skills):
-        persona = "Seasoned AI Architect"
-    elif github >= 75:
-        persona = "Open-Source Specialist"
-    elif demand >= 15:
-        persona = "High-Demand Talent"
-
-    # Build highly specific strength clauses
-    if retrieval_skills:
-        strengths.append(f"direct architecture experience with {retrieval_skills[0].title()}")
-    if eval_skills:
-        strengths.append(f"familiarity with ranking metrics like {eval_skills[0].upper()}")
-    if github >= 60:
-        strengths.append(f"a validated GitHub footprint (score: {github})")
-    if resp_rate >= 0.85:
-        strengths.append(f"excellent recruiter responsiveness ({int(resp_rate*100)}%)")
-
-    # ---------------------------------------------------------
-    # 3. HONEST GAP DETECTION (Crucial for Audit)
-    # ---------------------------------------------------------
-    gaps = []
-    if not retrieval_skills and not gen_ai_skills:
-        gaps.append("a lack of explicitly named JD-core AI skills")
-    if int_comp < 0.70:
-        gaps.append(f"a concerning interview drop-off rate ({int(int_comp*100)}%)")
-    if notice_days > 45:
-        gaps.append(f"a restrictive {notice_days}-day notice period")
-    if yoe < 2.0 and score > 0.5:
-        gaps.append("relatively light commercial tenure")
-
-    # ---------------------------------------------------------
-    # 4. MODULAR SENTENCE ASSEMBLY
-    # ---------------------------------------------------------
-    # Use a deterministic hash based on name/title length so the same candidate 
-    # always gets the same structure, but the dataset looks vastly varied.
-    variance = (len(title) + int(yoe) + github) % 4
-    
-    # Clause A: The Intro
-    intros = [
-        f"Tracking as a {persona} currently holding a {title} role with {yoe} YOE.",
-        f"Profile indicates {yoe} years of experience, aligning with a {persona} persona.",
-        f"Evaluated this {title} ({yoe} YOE) through the lens of our core AI requirements.",
-        f"A {yoe}-YOE {title} demonstrating traits of a {persona}."
-    ]
-    
-    # Clause B: The Core Justification
-    strength_str = ", ".join(strengths[:2]) if strengths else "baseline technical proficiencies"
-    cores = [
-        f"Selection was driven by {strength_str}.",
-        f"Candidate stands out primarily due to {strength_str}.",
-        f"Key drivers for this score include {strength_str}.",
-        f"Notable profile strengths feature {strength_str}."
-    ]
-    
-    # Clause C: The Nuance / Gaps
-    gap_str = " and ".join(gaps[:2]) if gaps else "no immediate behavioral red flags"
-    nuances = [
-        f"However, we noted {gap_str}.",
-        f"This is balanced against {gap_str}.",
-        f"Pipeline risks include {gap_str}.",
-        f"Reviewers should be aware of {gap_str}."
-    ]
-    
-    # Clause D: Final Verdict tied strictly to the mathematical score
-    if score >= 0.80:
-        verdict = "Highly recommended for immediate Stage 2 screening."
-    elif score >= 0.50:
-        verdict = "Viable secondary option; proceed with standard technical screen."
-    else:
-        verdict = "Ranked lower due to core JD mismatches; deprioritized in current pipeline."
-
-    # Assemble the final string based on the variance key to scramble the structure
-    if variance == 0:
-        final_text = f"{intros[0]} {cores[1]} {nuances[2]} {verdict}"
-    elif variance == 1:
-        final_text = f"{intros[2]} {cores[0]} {nuances[1]} {verdict}"
-    elif variance == 2:
-        final_text = f"{cores[2]} {intros[1]} {nuances[3]} {verdict}"
-    else:
-        final_text = f"{intros[3]} {cores[3]} {nuances[0]} {verdict}"
-
-    # Clean up whitespace and capitalize first letters just in case
-    final_text = " ".join(final_text.split())
-    return final_text
-
 # ==========================================
 # 2. NLP LOGIC 
 # ==========================================
@@ -517,7 +400,7 @@ if __name__ == "__main__":
         writer = csv.writer(file)
         writer.writerow(['candidate_id', 'rank', 'score', 'reasoning'])
         for rank, item in enumerate(top_100, start=1):
-            reasoning = generate_reasoning(item['candidate_data'], item['final_score'])
+            reasoning = generate_reasoning(item['candidate_data'], rank)
             writer.writerow([item['candidate_id'], rank, round(item['final_score'], 4), reasoning])
             
     print(f"Pipeline Complete! Output written to {args.out}")
