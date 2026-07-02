@@ -121,7 +121,7 @@ def filter_candidates(df_new):
     df_filtered5 = df_filtered5[(last_active >= cutoff_date) & (resp_rate >= 0.10)]
 
     # Target titles filter
-    target_titles = [
+    TARGET_TITLES = [
         'Software Engineer', 'Full Stack Developer', 'Java Developer', 'Cloud Engineer',
         '.NET Developer', 'DevOps Engineer', 'Backend Engineer', 'Senior Software Engineer',
         'Data Engineer', 'Analytics Engineer', 'Data Analyst', 'Senior Data Engineer',
@@ -133,7 +133,7 @@ def filter_candidates(df_new):
         'Senior AI Engineer', 'Senior ML Engineer — Search & Ranking'
     ]
 
-    escaped_titles = [re.escape(title) for title in target_titles]
+    escaped_titles = [re.escape(title) for title in TARGET_TITLES]
     reg_titles = "|".join(escaped_titles)
 
     def has_relevant_experience(history_list):
