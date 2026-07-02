@@ -87,51 +87,62 @@ $$\text{Final Grand Score} = \text{Pandas Fit Score} \times \text{Adjusted Seman
 
 ## 5. Dynamic Reasoning Generator
 
-For the final **Top 100 submitted candidates**, the pipeline automatically generates a human-readable, evidence-based explanation (`reasoning`) justifying why they were selected. It highlights their top 2-3 specific "superpowers":
-1. **JD-Aligned Core Skills**: Names specific matching skills (e.g., *“9 JD-aligned core skills (e.g., Go, Kubeflow)”*).
-2. **Top-Tier Certifications**: Explicitly cites specialized credentials (e.g., *“top-tier AI/ML certification (AWS Certified Machine Learning Specialty)”*).
-3. **Behavioral & Logistics Highlights**: Notes local Tier-1 hub availability, high GitHub activity (>=60), proven interview reliability (>=85%), or strong recruiter responsiveness.
+For the final **Top 100 submitted candidates**, the pipeline automatically generates a factual, evidence-based synopsis (`reasoning`) justifying their selection. The generator synthesizes career data, verified skills, and recruiter signals into a concise summary using the following logic:
 
+* **Peak Role & Achievement Extraction:** Scans the candidate's career history to identify the most relevant position, weighted by target titles and ML/Search keywords. It extracts the highest-density achievement sentence using regex triggers (metrics, technical architectures) while filtering out generic clichés and normalizing pronouns to the third person.
+* **Targeted Skill Compilation:** Identifies and highlights up to three verified, domain-relevant skills (e.g., Vector Search, RAG, PyTorch, LLMs) to summarize technical alignment.
+* **Logistics & Behavioral Signals:** Integrates operational metrics including total years of experience, average tenure, recruiter response rate (RRR), notice period, relocation willingness, open-to-work status, and 30-day recruiter bookmark counts.
+* **Automated Risk Flagging:** Appends explicit warnings for potential hiring friction, such as notice periods of 90+ days or international base locations lacking relocation intent.
+* **Dynamic Formatting & Tiering:** Assigns a qualitative label (e.g., "A standout fit", "A strong match") based on the candidate's rank threshold (Top 10, Top 30, etc.). To maintain readability at scale, the generator rotates between four distinct structural templates based on the candidate's index position.
+  
 ---
 
 ## 6. Top 5 Ranked Candidates & JD Alignment Case Studies
 
 The following table summarizes the Top 5 candidates emerging from our ranking engine, demonstrating how our hybrid pipeline successfully surfaces true AI/ML "shippers" over keyword stuffers:
 
-| Rank  | Candidate ID   | Score        | Current Title & YOE                       | Generated Reasoning from Submission                                                                                                                                                                                        |
-| ----- | -------------- | ------------ | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1** | `CAND_0036437` | **549.5849** | Search Engineer (4.8 YOE)                 | Search Engineer at Rephrase.ai (4.8 YOE). Selected for proven e-commerce learning-to-rank experience, high recruiter response rate (87%), and demonstrated skills in OpenSearch, Elasticsearch, and Sentence Transformers. |
-| **2** | `CAND_0017960` | **451.4879** | Recommendation Systems Engineer (7.7 YOE) | Recommendation Systems Engineer at Sarvam AI (7.7 YOE). Selected for strong semantic search background (Qdrant, FAISS), offline-to-online correlation expertise, and high market demand (bookmarked by 43 recruiters).     |
-| **3** | `CAND_0006418` | **351.6436** | Machine Learning Engineer (5.7 YOE)       | Machine Learning Engineer at Verloop.io (5.7 YOE). Selected for strong evaluation rigor, verified skills in Weaviate and Embeddings, and excellent recruiter response rate (92%).                                          |
-| **4** | `CAND_0099806` | **256.4864** | Machine Learning Engineer (4.6 YOE)       | Machine Learning Engineer at Mad Street Den (4.6 YOE). Selected for direct experience migrating keyword systems to embedding-based retrieval, strong RAG/FAISS skills, and offline-online correlation ownership.           |
-| **5** | `CAND_0041669` | **168.0092** | Recommendation Systems Engineer (8.0 YOE) | Recommendation Systems Engineer at CRED (8.0 YOE). Selected for massive scale experience (10M+ users), comprehensive vector DB skills (Milvus, FAISS, Pinecone), and high market demand (bookmarked by 37 recruiters).     |
+| Rank | Candidate ID | Score | Current Title & YOE | Generated Reasoning from Submission |
+| --- | --- | --- | --- | --- |
+| **1** | `CAND_0041669` | **68.0092** | Recommendation Systems Engineer (8.0 YOE) | A Recommendation Systems Engineer at CRED with 8.0 years. Demonstrated skills in FAISS, Milvus, and Semantic Search: at Mad Street Den, deployment cut average ticket resolution time by 31% for the supported categories. Based in Noida, Uttar Pradesh; 60-day notice, 77% recruiter response rate; bookmarked by 37 recruiters recently and actively open to new opportunities. |
+| **2** | `CAND_0099806` | **56.4864** | Machine Learning Engineer (4.6 YOE) | With 4.6 years of experience and verified skills in RAG, FAISS, and Embeddings, they show a stable career averaging 2.3 years per role. Notably at Mad Street Den, owned the offline-online correlation analysis that determined which offline metrics actually predicted A/B test outcomes. In Bhubaneswar, Odisha, open to relocation and actively open to new opportunities; 30-day notice, 76% recruiter response rate; bookmarked by 9 recruiters recently. |
+| **3** | `CAND_0006418` | **51.6436** | Machine Learning Engineer (5.7 YOE) | A standout fit for this role: 5.7 years as a Machine Learning Engineer. Verified skills in Semantic Search, Embeddings, and Weaviate. At Verloop.io, owned the offline-online correlation analysis that determined which offline metrics actually predicted A/B test outcomes. Gurgaon, Haryana, open to relocation and actively open to new opportunities — 60-day notice, 92% recruiter response rate; bookmarked by 9 recruiters recently. |
+| **4** | `CAND_0017960` | **51.4879** | Recommendation Systems Engineer (7.7 YOE) | A standout fit: At Sarvam AI, deployment cut average ticket resolution time by 31% for the supported categories. They bring 7.7 years as a Recommendation Systems Engineer and verified skills in Qdrant and Information Retrieval. Located in Bangalore, Karnataka, open to relocation and actively open to new opportunities, 60-day notice (72% recruiter response rate; bookmarked by 43 recruiters recently). |
+| **5** | `CAND_0036437` | **49.5849** | Search Engineer (4.8 YOE) | A Search Engineer at Rephrase.ai with 4.8 years. Demonstrated skills in OpenSearch, Elasticsearch, and Sentence Transformers: at Rephrase.ai, final model improved revenue-per-search by 12%. Based in Kolkata, West Bengal, open to relocation; 30-day notice, 87% recruiter response rate; bookmarked by 15 recruiters recently. |
 
 ### Why These Candidates Perfectly Match the Job Description:
 
-#### 1. `CAND_0036437` — The E-Commerce Search & RAG Shipper (Rank 1)
+#### 1. `CAND_0041669` — The E-Commerce Ranking & RAG Veteran (Rank 1)
 
-- **What they built**: Owned the ranking layer for an e-commerce search product at Rephrase.ai, successfully evolving it from a hand-tuned scoring function to a learning-to-rank model over 9 months, improving revenue-per-search by **12%**. Also shipped a production RAG-based feature and built an end-to-end churn prediction model utilizing MLflow and Kubeflow.
-- **JD Alignment**: Perfectly maps to the requirement for someone who _"understood retrieval and ranking before it became fashionable."_ Their ability to design relevance labeling pipelines (mixing click-through data with explicit human judgments) and handle infrastructure/data quality proves they can _"ship a working ranker in a week."_
+* **What they built**: Evolved an e-commerce search product from hand-tuned scoring to a learning-to-rank model over 9 months, improving revenue-per-search by 12%. Shipped a RAG customer support chatbot (Pinecone, OpenAI embeddings, custom BLEU/ROUGE/human eval framework) that cut resolution time by 31%.
+* **JD Alignment**: Directly satisfies the 5–9 YOE requirement and the preference for candidates with learning-to-rank experience. They are located in the preferred Noida hub. Furthermore, their high market demand is validated by 37 recent recruiter bookmarks.
 
-#### 2. `CAND_0017960` — The Semantic Search Builder & Discovery Feed Expert (Rank 2)
 
-- **What they built**: Built semantic search infrastructure from scratch utilizing `sentence-transformers` and FAISS, while managing critical operational components like A/B testing, drift monitoring, and retraining schedules. Additionally, implemented a RAG-based support chatbot utilizing OpenAI embeddings and Pinecone that cut average ticket resolution time by **31%**.
-- **JD Alignment**: Directly satisfies the need for _"production experience with embeddings-based retrieval systems"_ and vector databases. Their hands-on experience training discovery feed ranking models (XGBoost, LightGBM) and owning the offline-to-online correlation analysis fulfills the core ranking and evaluation requirements of the JD.
 
-#### 3. `CAND_0006418` — The Evaluation Rigor & ML Ops Specialist (Rank 3)
+#### 2. `CAND_0099806` — The Migration & Analytics Specialist (Rank 2)
 
-- **What they built**: Shipped a new RAG-based feature and immediately took ownership of its evaluation framework. Trained multiple discovery feed ranking models using XGBoost/LightGBM and managed robust production ML pipelines using MLflow, Kubeflow, and internal feature stores, complete with data drift detection and alerting.
-- **JD Alignment**: Speaks directly to the JD's focus on benchmarking: _"I care a lot about evaluation rigor — too many teams ship models without offline benchmarks they trust."_ Their experience defining optimization targets (click-through vs. dwell time vs. downstream conversion) with PMs shows high product-engineering maturity.
+* **What they built**: Led a migration from legacy keyword search to embedding-based retrieval. Trained discovery feed ranking models (XGBoost/LightGBM) and owned critical offline-to-online correlation analysis for determining which offline metrics predict A/B test outcomes.
+* **JD Alignment**: Perfectly executes the mandate for the first 90 days: auditing BM25/keyword systems and migrating to embeddings/hybrid retrieval. They explicitly fulfill the core requirement of understanding offline-to-online correlation and A/B test interpretation. Their sub-30-day notice period aligns with immediate hiring preferences.
 
-#### 4. `CAND_0099806` — The Embedding-Based Retrieval Migrator (Rank 4)
 
-- **What they built**: Successfully led a product team through the exact migration journey from legacy keyword-based search to modern embedding-based retrieval. Designed comprehensive feature families (content metadata, user behavior signals, item engagement history) for discovery feeds and owned the offline-online correlation analysis for A/B tests.
-- **JD Alignment**: The candidate's recent project acts as a proven blueprint for the JD's _"Weeks 4-8"_ objective to ship a v2 ranking system involving embeddings. As they note, they have _"spent enough time debugging production ranking issues to know which signals matter and which are noise."_
 
-#### 5. `CAND_0041669` — The 10M+ Scale Recommendation & RAG Architect (Rank 5)
+#### 3. `CAND_0006418` — The Evaluation Rigor & MLOps Architect (Rank 3)
 
-- **What they built**: Designed a massive-scale content recommendation system serving **10M+ users**, utilizing sentence-transformer embeddings for cold starts and gradient-boosted models for warm users, which improved 7-day retention by **6%**. Also evolved an e-commerce search product to learning-to-rank (+12% revenue) and shipped a Pinecone-backed RAG chatbot that reduced ticket resolution time by **31%**.
-- **JD Alignment**: Brings elite, proven scale to the table with 8 years of robust experience spanning NLP, recommendation systems, and applied AI. Their ability to manage massive feature pipelines (~200 features) and build A/B testing infrastructure from the ground up makes them an ideal senior IC hire capable of owning a highly impactful piece of the ML stack.
+* **What they built**: Built and shipped a RAG-based feature and an accompanying offline benchmark framework. Designed and operated ML pipelines utilizing MLflow and Kubeflow, deploying model monitoring stacks focused on data drift detection.
+* **JD Alignment**: Meets the strict mandate for evaluating ranking systems rigorously; the JD explicitly warns that candidates without this specific experience will struggle. Their operational experience in data drift detection aligns directly with the requirement for handling embedding drift in production. Located in Gurgaon, facilitating the flexible Tier-1 NCR cadence.
+
+
+
+#### 4. `CAND_0017960` — The Semantic Search Operations Expert (Rank 4)
+
+* **What they built**: Constructed semantic search infrastructure from scratch utilizing sentence-transformers and FAISS. Managed the operational lifecycle spanning A/B testing, drift monitoring, and retraining schedules. Deployed a RAG chatbot improving ticketing resolution by 31%.
+* **JD Alignment**: Checks every operational requirement in the JD's absolute necessities: production deployment of embeddings, vector database infrastructure (FAISS), and active handling of embedding drift and retraining. Demonstrates high availability and engagement via 43 recent bookmarks and a strong recruiter response rate.
+
+
+
+#### 5. `CAND_0036437` — The Full-Stack Ranking Shipper (Rank 5)
+
+* **What they built**: Advanced a ranking layer from hand-tuned functions to learning-to-rank, yielding a 12% boost in revenue-per-search. Built production ML pipelines encompassing experiment tracking and data drift alerting for churn prediction.
+* **JD Alignment**: Reflects the required "scrappy product-engineering attitude" by prioritizing shipped outcomes (revenue improvements) alongside operational infrastructure (Kubeflow, MLflow). Their 30-day notice period and 87% response rate represent a highly actionable signal for rapid pipeline movement.
 
 ---
 
