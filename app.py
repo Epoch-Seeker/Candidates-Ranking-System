@@ -15,7 +15,7 @@ st.markdown("Evaluate candidates using our 5-stage hybrid ranking pipeline (hone
 # 1. Input selection
 mode = st.radio(
     "Select Candidate Dataset:",
-    ["Pre-loaded Sample (1,000 High-Signal Candidates)", "Upload Custom Dataset (.json / .jsonl / .gz)"],
+    ["Pre-loaded Sample (100 Candidates)", "Upload Custom Dataset (.json / .jsonl / .gz)"],
     horizontal=True
 )
 
